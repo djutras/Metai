@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
-import { topics, topicArticles, articles, sources } from '@/../../db/schema';
+import { db } from '../src/lib/db';
+import { topics, topicArticles, articles, sources } from '../db/schema';
 import { eq, desc, gte, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
