@@ -1,5 +1,6 @@
 import { db } from './db';
 import { sources } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 import { ExtractedArticle } from './extract';
 import { topicMatchScore } from './quality';
 
@@ -48,7 +49,7 @@ async function getNormalizedSourcePoints(sourceDomain: string): Promise<number> 
   const source = await db
     .select({ points: sources.points })
     .from(sources)
-    .where(sources.domain.equals(sourceDomain))
+    .where(eq(sources.domain, sourceDomain))
     .limit(1);
 
   if (source.length === 0) return 0.5; // Default for new sources
