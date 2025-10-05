@@ -15,7 +15,7 @@ if (!DATABASE_URL) {
 }
 
 async function logCrawlRun() {
-  const sql = neon(DATABASE_URL);
+  const sql = neon(DATABASE_URL!);
 
   try {
     // Get GitHub context
