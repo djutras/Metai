@@ -88,3 +88,12 @@ export const candidateProbes = pgTable('candidate_probes', {
   statusJson: jsonb('status_json'),
   probedAt: timestamp('probed_at', { withTimezone: true }).defaultNow().notNull()
 });
+
+// Crawl runs table - tracks when GitHub Actions workflows start crawls
+export const crawlRuns = pgTable('crawl_runs', {
+  id: bigserial('id', { mode: 'bigint' }).primaryKey(),
+  workflowName: text('workflow_name').notNull(),
+  runId: text('run_id'),
+  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+  metadata: jsonb('metadata')
+});

@@ -8,10 +8,14 @@ async function checkAdmin() {
   try {
     console.log('Checking main site...');
     await page.goto('https://obscureai.netlify.app/', { timeout: 30000 });
+
+    // Clear cache and reload
+    await context.clearCookies();
+    await page.reload({ waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
     console.log('\nAttempting to navigate to /admin...');
-    await page.goto('https://obscureai.netlify.app/admin', { timeout: 30000 });
+    await page.goto('https://obscureai.netlify.app/admin', { timeout: 30000, waitUntil: 'networkidle' });
     await page.waitForTimeout(3000);
 
     const pageTitle = await page.title();
