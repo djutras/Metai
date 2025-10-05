@@ -1,5 +1,5 @@
-import { db } from '../../src/lib/db';
-import { topics, topicArticles, articles, sources } from '../../db/schema';
+import { db, sql as rawSql } from '@/lib/db';
+import { topics, topicArticles, articles, sources } from '@/../../db/schema';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 
@@ -12,21 +12,25 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
   const { topicSlug } = params;
   const { filter = '48h', lang } = searchParams;
 
-  // Load topic
-  const [topic] = await db
-    .select()
-    .from(topics)
-    .where(and(eq(topics.slug, topicSlug), eq(topics.enabled, true)))
-    .limit(1);
+  // Load topic - use raw SQL to bypass Drizzle caching
+  const rawTopics = await rawSql`
+    SELECT id, slug, name, query, includes, excludes, lang, freshness_hours as "freshnessHours", max_items as "maxItems", enabled
+    FROM topics
+    WHERE slug = ${topicSlug} AND enabled = true
+    LIMIT 1
+  `;
 
-  if (!topic) {
+  if (rawTopics.length === 0) {
     notFound();
   }
 
+  const topic = rawTopics[0] as any;
+  console.log(`[${topicSlug}] Topic loaded: id=${topic.id}, maxItems=${topic.maxItems}`);
+
   // Calculate time filter
   const hoursMap: Record<string, number> = { '24h': 24, '48h': 48, '7d': 168 };
-  const hours = hoursMap[filter] || 48;
-  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+  const hours = filter === 'all' ? null : (hoursMap[filter] || 48);
+  const cutoff = hours ? new Date(Date.now() - hours * 60 * 60 * 1000) : null;
 
   // Load articles
   const articlesList = await db
@@ -50,12 +54,14 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
       and(
         eq(topicArticles.topicId, topic.id),
         eq(topicArticles.hiddenBool, false),
-        gte(articles.publishedAt, cutoff),
+        cutoff ? gte(articles.publishedAt, cutoff) : undefined,
         lang ? eq(articles.lang, lang) : undefined
       )
     )
     .orderBy(desc(topicArticles.addedAt))
     .limit(topic.maxItems);
+
+  console.log(`[${topicSlug}] Query returned ${articlesList.length} articles (maxItems: ${topic.maxItems}, filter: ${filter})`);
 
   // Calculate last update
   const lastUpdate = articlesList.length > 0
@@ -75,9 +81,9 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
 
       {/* Filters */}
       <div className="mb-6 flex gap-2">
-        {['24h', '48h', '7d'].map(f => (
+        {['24h', '48h', '7d', 'all'].map(f => (
           <a key={f} href={`/${topicSlug}?filter=${f}`} className={`chip ${filter === f ? 'active' : ''}`}>
-            {f}
+            {f === 'all' ? 'All' : f}
           </a>
         ))}
       </div>

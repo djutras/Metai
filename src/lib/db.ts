@@ -2,8 +2,8 @@ import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../../db/schema';
 
-// Enable fetch-based queries for edge/serverless
-neonConfig.fetchConnectionCache = true;
+// Disable fetch connection cache to prevent stale data
+neonConfig.fetchConnectionCache = false;
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
