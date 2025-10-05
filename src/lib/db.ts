@@ -1,5 +1,6 @@
 import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { sql as drizzleSql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 
 // Enable fetch-based queries for edge/serverless
@@ -11,10 +12,10 @@ if (!DATABASE_URL) {
 }
 
 // Create Neon client
-const sql = neon(DATABASE_URL);
+const neonSql = neon(DATABASE_URL);
 
 // Create Drizzle instance with schema
-export const db = drizzle(sql, { schema });
+export const db = drizzle(neonSql, { schema });
 
-// Raw SQL helper for advanced queries
-export { sql };
+// Export the Neon SQL function for raw queries
+export const sql = neonSql;
