@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function AdminPage() {
   const [password, setPassword] = useState('');
@@ -136,7 +137,21 @@ export default function AdminPage() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '50px auto', padding: '20px' }}>
-      <h1 style={{ marginBottom: '30px' }}>Admin Panel</h1>
+      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Admin Panel</h1>
+        <Link
+          href="/search_configured"
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#000',
+            color: '#fff',
+            textDecoration: 'none',
+            borderRadius: '4px',
+          }}
+        >
+          Search Configured
+        </Link>
+      </div>
 
       {message && (
         <div
