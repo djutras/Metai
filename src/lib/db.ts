@@ -1,6 +1,5 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon, neonConfig, type NeonQueryFunction } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { sql as drizzleSql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 
 // Enable fetch-based queries for edge/serverless
@@ -11,8 +10,8 @@ if (!DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is required');
 }
 
-// Create Neon client
-const neonSql = neon(DATABASE_URL);
+// Create Neon client with explicit type
+const neonSql: NeonQueryFunction<boolean, boolean> = neon(DATABASE_URL);
 
 // Create Drizzle instance with schema
 export const db = drizzle(neonSql, { schema });
