@@ -7,10 +7,10 @@ async function checkNetlifyDeploy() {
 
   try {
     console.log('Navigating to Netlify deploys page...');
-    await page.goto('https://app.netlify.com/projects/obscureai/deploys');
+    await page.goto('https://app.netlify.com/projects/obscureai/deploys', { timeout: 60000 });
 
     // Wait for the page to load
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // Check for the most recent deploy status
     const firstDeploy = page.locator('[data-testid="deploy-card"]').first();
