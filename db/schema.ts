@@ -8,6 +8,7 @@ export const sources = pgTable('sources', {
   type: text('type').notNull(),
   apiConfig: jsonb('api_config'),
   points: integer('points').default(0).notNull(),
+  topicId: integer('topic_id'),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   enabled: boolean('enabled').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()

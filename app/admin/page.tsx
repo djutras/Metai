@@ -1,12 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const authExpiry = localStorage.getItem('adminAuthExpiry');
+    if (authExpiry) {
+      const expiryTime = parseInt(authExpiry);
+      if (Date.now() < expiryTime) {
+        setAuthenticated(true);
+      } else {
+        localStorage.removeItem('adminAuthExpiry');
+      }
+    }
+  }, []);
 
   // Topic form state
   const [topicData, setTopicData] = useState({
@@ -25,6 +38,7 @@ export default function AdminPage() {
     name: '',
     domain: '',
     type: 'custom_crawler',
+    topicId: '',
   });
 
   const handleLogin = (e: React.FormEvent) => {
@@ -32,6 +46,9 @@ export default function AdminPage() {
     if (password === '$$$Hfyj54hfmetai') {
       setAuthenticated(true);
       setMessage('');
+      // Set expiry time to 1 hour from now
+      const expiryTime = Date.now() + (60 * 60 * 1000); // 1 hour in milliseconds
+      localStorage.setItem('adminAuthExpiry', expiryTime.toString());
     } else {
       setMessage('Invalid password');
     }
@@ -78,7 +95,10 @@ export default function AdminPage() {
       const response = await fetch('/.netlify/functions/add-source', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sourceData),
+        body: JSON.stringify({
+          ...sourceData,
+          topicId: sourceData.topicId ? parseInt(sourceData.topicId) : null,
+        }),
       });
 
       if (response.ok) {
@@ -87,6 +107,7 @@ export default function AdminPage() {
           name: '',
           domain: '',
           type: 'custom_crawler',
+          topicId: '',
         });
       } else {
         const error = await response.text();
@@ -137,20 +158,34 @@ export default function AdminPage() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '50px auto', padding: '20px' }}>
-      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Admin Panel</h1>
-        <Link
-          href="/search_configured"
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#000',
-            color: '#fff',
-            textDecoration: 'none',
-            borderRadius: '4px',
-          }}
-        >
-          Search Configured
-        </Link>
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ marginBottom: '20px' }}>Admin Panel</h1>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Link
+            href="/cron_report"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#000',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '4px',
+            }}
+          >
+            Cron Report
+          </Link>
+          <Link
+            href="/search_configured"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#000',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '4px',
+            }}
+          >
+            Search Configured
+          </Link>
+        </div>
       </div>
 
       {message && (
@@ -307,6 +342,17 @@ export default function AdminPage() {
             >
               <option value="custom_crawler">Custom Crawler</option>
             </select>
+          </div>
+
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px' }}>ID_Topics (optional):</label>
+            <input
+              type="number"
+              value={sourceData.topicId}
+              onChange={(e) => setSourceData({ ...sourceData, topicId: e.target.value })}
+              placeholder="Enter topic ID"
+              style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
           </div>
 
           <button
