@@ -131,7 +131,7 @@ export async function upsertArticleAndLink(
   let sourceId: number | undefined;
 
   if (source.length === 0) {
-    // Create new source
+    // Create new source and assign it to the topic
     const [newSource] = await db
       .insert(sources)
       .values({
@@ -139,6 +139,7 @@ export async function upsertArticleAndLink(
         domain: article.source_domain,
         type: 'custom_crawler',
         points: 0,
+        topicId: topicId, // Assign to the topic being crawled
         enabled: true,
       })
       .returning({ id: sources.id });

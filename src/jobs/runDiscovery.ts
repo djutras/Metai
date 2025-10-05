@@ -1,5 +1,5 @@
 import { db } from '../lib/db';
-import { candidateDomains, candidateProbes, sources, articles } from '../../db/schema';
+import { candidateDomains, candidateProbes, sources, articles, topics } from '../../db/schema';
 import { sql, eq } from 'drizzle-orm';
 import { getRobots } from '../lib/robots';
 import { fetchHtml, fetchXml } from '../lib/http';
@@ -263,16 +263,28 @@ export async function runDiscovery(): Promise<DiscoveryStats> {
 
       // Auto-promote if score >= 60
       if (probeResult.score >= 60) {
-        await db.insert(sources).values({
-          name: domain,
-          domain,
-          type: 'custom_crawler',
-          points: 0,
-          enabled: true,
-        });
+        // Get first enabled topic as default for auto-discovered sources
+        const defaultTopic = await db
+          .select({ id: topics.id })
+          .from(topics)
+          .where(eq(topics.enabled, true))
+          .limit(1);
 
-        stats.autoPromoted++;
-        console.log(`Auto-promoted ${domain} (score: ${probeResult.score})`);
+        if (defaultTopic.length === 0) {
+          console.log(`Cannot auto-promote ${domain}: no topics available`);
+        } else {
+          await db.insert(sources).values({
+            name: domain,
+            domain,
+            type: 'custom_crawler',
+            points: 0,
+            topicId: defaultTopic[0].id,
+            enabled: true,
+          });
+
+          stats.autoPromoted++;
+          console.log(`Auto-promoted ${domain} to topic ${defaultTopic[0].id} (score: ${probeResult.score})`);
+        }
       }
     } catch (error) {
       console.error(`Error probing ${domain}:`, error);
