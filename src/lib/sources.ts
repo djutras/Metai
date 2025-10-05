@@ -1,6 +1,6 @@
 import { db } from './db';
 import { sources } from '../../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, desc } from 'drizzle-orm';
 
 /**
  * Bump source points by a delta
@@ -22,7 +22,7 @@ export async function getSourcesOrdered() {
     .select()
     .from(sources)
     .where(eq(sources.enabled, true))
-    .orderBy(sources.points.desc(), sources.createdAt.desc());
+    .orderBy(desc(sources.points), desc(sources.createdAt));
 }
 
 /**
