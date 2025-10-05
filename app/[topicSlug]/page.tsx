@@ -63,9 +63,9 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
 
   console.log(`[${topicSlug}] Query returned ${articlesList.length} articles (maxItems: ${topic.maxItems}, filter: ${filter})`);
 
-  // Calculate last update
+  // Calculate last update based on most recent article publish date
   const lastUpdate = articlesList.length > 0
-    ? Math.floor((Date.now() - new Date(articlesList[0].firstSeenAt).getTime()) / (1000 * 60))
+    ? Math.floor((Date.now() - new Date(articlesList[0].publishedAt).getTime()) / (1000 * 60))
     : 0;
 
   return (
