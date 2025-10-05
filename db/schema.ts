@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamptz, jsonb, bigserial, bytea } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, bigserial, bytea } from 'drizzle-orm/pg-core';
 
 // Sources table
 export const sources = pgTable('sources', {
@@ -8,9 +8,9 @@ export const sources = pgTable('sources', {
   type: text('type').notNull(),
   apiConfig: jsonb('api_config'),
   points: integer('points').default(0).notNull(),
-  lastSeenAt: timestamptz('last_seen_at'),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   enabled: boolean('enabled').default(true).notNull(),
-  createdAt: timestamptz('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
 // Topics table
@@ -27,7 +27,7 @@ export const topics = pgTable('topics', {
   maxItems: integer('max_items').default(30).notNull(),
   configJson: jsonb('config_json'),
   enabled: boolean('enabled').default(true).notNull(),
-  createdAt: timestamptz('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
 // Articles table
@@ -37,12 +37,12 @@ export const articles = pgTable('articles', {
   title: text('title').notNull(),
   summary: text('summary'),
   sourceId: integer('source_id').references(() => sources.id, { onDelete: 'set null' }),
-  publishedAt: timestamptz('published_at').notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
   lang: text('lang'),
   imageUrl: text('image_url'),
   simhash: bytea('simhash'),
   paywalledBool: boolean('paywalled_bool').default(false).notNull(),
-  firstSeenAt: timestamptz('first_seen_at').defaultNow().notNull()
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull()
 });
 
 // Topic-Articles junction table
@@ -50,7 +50,7 @@ export const topicArticles = pgTable('topic_articles', {
   id: bigserial('id', { mode: 'bigint' }).primaryKey(),
   topicId: integer('topic_id').notNull().references(() => topics.id, { onDelete: 'cascade' }),
   articleId: bigserial('article_id', { mode: 'bigint' }).notNull().references(() => articles.id, { onDelete: 'cascade' }),
-  addedAt: timestamptz('added_at').defaultNow().notNull(),
+  addedAt: timestamp('added_at', { withTimezone: true }).defaultNow().notNull(),
   hiddenBool: boolean('hidden_bool').default(false).notNull()
 });
 
@@ -58,8 +58,8 @@ export const topicArticles = pgTable('topic_articles', {
 export const crawls = pgTable('crawls', {
   id: bigserial('id', { mode: 'bigint' }).primaryKey(),
   topicId: integer('topic_id').references(() => topics.id, { onDelete: 'set null' }),
-  startedAt: timestamptz('started_at').defaultNow().notNull(),
-  finishedAt: timestamptz('finished_at'),
+  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
   okBool: boolean('ok_bool'),
   statsJson: jsonb('stats_json')
 });
@@ -71,8 +71,8 @@ export const candidateDomains = pgTable('candidate_domains', {
   discoveredVia: text('discovered_via'),
   score: integer('score'),
   robotsState: text('robots_state'),
-  firstSeenAt: timestamptz('first_seen_at').defaultNow().notNull(),
-  lastSeenAt: timestamptz('last_seen_at'),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   notes: text('notes')
 });
 
@@ -86,5 +86,5 @@ export const candidateProbes = pgTable('candidate_probes', {
   lastmodRecent: boolean('lastmod_recent'),
   lang: text('lang'),
   statusJson: jsonb('status_json'),
-  probedAt: timestamptz('probed_at').defaultNow().notNull()
+  probedAt: timestamp('probed_at', { withTimezone: true }).defaultNow().notNull()
 });
