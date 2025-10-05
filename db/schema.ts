@@ -8,7 +8,6 @@ export const sources = pgTable('sources', {
   type: text('type').notNull(),
   apiConfig: jsonb('api_config'),
   points: integer('points').default(0).notNull(),
-  topicId: integer('topic_id').notNull().references(() => topics.id, { onDelete: 'cascade' }),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   enabled: boolean('enabled').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
@@ -28,6 +27,14 @@ export const topics = pgTable('topics', {
   maxItems: integer('max_items').default(30).notNull(),
   configJson: jsonb('config_json'),
   enabled: boolean('enabled').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// Source-Topics junction table (many-to-many)
+export const sourcesTopics = pgTable('sources_topics', {
+  id: serial('id').primaryKey(),
+  sourceId: integer('source_id').notNull().references(() => sources.id, { onDelete: 'cascade' }),
+  topicId: integer('topic_id').notNull().references(() => topics.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 

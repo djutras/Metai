@@ -1,5 +1,5 @@
 import { db } from '../lib/db';
-import { candidateDomains, candidateProbes, sources, articles, topics } from '../../db/schema';
+import { candidateDomains, candidateProbes, sources, articles, topics, sourcesTopics } from '../../db/schema';
 import { sql, eq } from 'drizzle-orm';
 import { getRobots } from '../lib/robots';
 import { fetchHtml, fetchXml } from '../lib/http';
@@ -273,13 +273,19 @@ export async function runDiscovery(): Promise<DiscoveryStats> {
         if (defaultTopic.length === 0) {
           console.log(`Cannot auto-promote ${domain}: no topics available`);
         } else {
-          await db.insert(sources).values({
+          // Create source
+          const [newSource] = await db.insert(sources).values({
             name: domain,
             domain,
             type: 'custom_crawler',
             points: 0,
-            topicId: defaultTopic[0].id,
             enabled: true,
+          }).returning({ id: sources.id });
+
+          // Link to first enabled topic
+          await db.insert(sourcesTopics).values({
+            sourceId: newSource.id,
+            topicId: defaultTopic[0].id,
           });
 
           stats.autoPromoted++;

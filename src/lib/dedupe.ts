@@ -1,5 +1,5 @@
 import { db } from './db';
-import { articles, topicArticles, sources } from '../../db/schema';
+import { articles, topicArticles, sources, sourcesTopics } from '../../db/schema';
 import { ExtractedArticle } from './extract';
 import { eq, and, gte, sql } from 'drizzle-orm';
 
@@ -131,7 +131,7 @@ export async function upsertArticleAndLink(
   let sourceId: number | undefined;
 
   if (source.length === 0) {
-    // Create new source and assign it to the topic
+    // Create new source
     const [newSource] = await db
       .insert(sources)
       .values({
@@ -139,14 +139,31 @@ export async function upsertArticleAndLink(
         domain: article.source_domain,
         type: 'custom_crawler',
         points: 0,
-        topicId: topicId, // Assign to the topic being crawled
         enabled: true,
       })
       .returning({ id: sources.id });
 
     sourceId = newSource.id;
+
+    // Link source to topic
+    await db
+      .insert(sourcesTopics)
+      .values({
+        sourceId: sourceId,
+        topicId: topicId,
+      })
+      .onConflictDoNothing();
   } else {
     sourceId = source[0].id;
+
+    // Ensure source is linked to this topic
+    await db
+      .insert(sourcesTopics)
+      .values({
+        sourceId: sourceId,
+        topicId: topicId,
+      })
+      .onConflictDoNothing();
   }
 
   // Update source last_seen_at

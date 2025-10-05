@@ -1,5 +1,5 @@
 import { db, sql } from '../lib/db';
-import { topics, sources, crawls } from '../../db/schema';
+import { topics, sources, crawls, sourcesTopics } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { buildFrontier } from '../lib/crawl/frontier';
 import { getRobots, isAllowed, rateLimitFor, setCooldown } from '../lib/robots';
@@ -86,11 +86,25 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
       crawlId: crawl.id,
     };
 
-    // Load sources
+    // Load sources for this topic via junction table
     const siteSources = await db
-      .select()
+      .select({
+        id: sources.id,
+        name: sources.name,
+        domain: sources.domain,
+        type: sources.type,
+        apiConfig: sources.apiConfig,
+        points: sources.points,
+        enabled: sources.enabled,
+      })
       .from(sources)
-      .where(eq(sources.enabled, true));
+      .innerJoin(sourcesTopics, eq(sources.id, sourcesTopics.sourceId))
+      .where(
+        and(
+          eq(sources.enabled, true),
+          eq(sourcesTopics.topicId, topic.id)
+        )
+      );
 
     const sites = siteSources.map(s => ({
       domain: s.domain,
