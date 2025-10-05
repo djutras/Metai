@@ -9,7 +9,7 @@ export const sources = pgTable('sources', {
   name: text('name').notNull(),
   domain: text('domain').unique().notNull(),
   type: text('type').notNull(), // Using text with check constraint instead of enum for simpler migration
-  apiConfig: jsonb('api_config').$type<Record<string, any>>(),
+  apiConfig: jsonb('api_config'),
   points: integer('points').default(0).notNull(),
   lastSeenAt: timestamptz('last_seen_at'),
   enabled: boolean('enabled').default(true).notNull(),
@@ -30,7 +30,7 @@ export const topics = pgTable('topics', {
   region: text('region'),
   freshnessHours: integer('freshness_hours').default(72).notNull(),
   maxItems: integer('max_items').default(30).notNull(),
-  configJson: jsonb('config_json').$type<Record<string, any>>(),
+  configJson: jsonb('config_json'),
   enabled: boolean('enabled').default(true).notNull(),
   createdAt: timestamptz('created_at').defaultNow().notNull(),
 }));
