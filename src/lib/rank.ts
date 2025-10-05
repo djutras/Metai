@@ -5,6 +5,7 @@ import { ExtractedArticle } from './extract';
 import { topicMatchScore } from './quality';
 
 interface Topic {
+  freshnessHours: number;
   query?: string;
   includes: string[];
   excludes: string[];
