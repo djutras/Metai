@@ -1,0 +1,20 @@
+name: Discovery Probe
+
+on:
+  schedule:
+    # Run daily at 3:00 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger discovery function
+        run: |
+          curl -X POST "${{ secrets.NETLIFY_SITE_URL }}/.netlify/functions/discovery_probe" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            --max-time 300
+        continue-on-error: true

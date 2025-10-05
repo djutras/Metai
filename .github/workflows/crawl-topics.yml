@@ -1,0 +1,20 @@
+name: Crawl Topics
+
+on:
+  schedule:
+    # Run every hour at 5 minutes past
+    - cron: '5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger crawl function
+        run: |
+          curl -X POST "${{ secrets.NETLIFY_SITE_URL }}/.netlify/functions/crawl_topic" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            --max-time 300
+        continue-on-error: true
