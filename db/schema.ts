@@ -1,4 +1,5 @@
-import { pgTable, serial, text, integer, boolean, timestamptz, jsonb, bigserial, uniqueIndex, index, pgEnum, bytea } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, boolean, timestamptz, jsonb, bigserial, uniqueIndex, index, pgEnum, bytea, sql } from 'drizzle-orm';
+import { desc } from 'drizzle-orm';
 
 // Enums
 export const sourceTypeEnum = pgEnum('source_type', ['google_news', 'reddit', 'custom_crawler', 'api']);
@@ -9,7 +10,7 @@ export const sources = pgTable('sources', {
   name: text('name').notNull(),
   domain: text('domain').unique().notNull(),
   type: text('type').notNull(), // Using text with check constraint instead of enum for simpler migration
-  apiConfig: jsonb('api_config').default({}).notNull(),
+  apiConfig: jsonb('api_config').$type<Record<string, any>>().default(sql`'{}'::jsonb`).notNull(),
   points: integer('points').default(0).notNull(),
   lastSeenAt: timestamptz('last_seen_at'),
   enabled: boolean('enabled').default(true).notNull(),
@@ -30,7 +31,7 @@ export const topics = pgTable('topics', {
   region: text('region'),
   freshnessHours: integer('freshness_hours').default(72).notNull(),
   maxItems: integer('max_items').default(30).notNull(),
-  configJson: jsonb('config_json').default({}).notNull(),
+  configJson: jsonb('config_json').$type<Record<string, any>>().default(sql`'{}'::jsonb`).notNull(),
   enabled: boolean('enabled').default(true).notNull(),
   createdAt: timestamptz('created_at').defaultNow().notNull(),
 }));
