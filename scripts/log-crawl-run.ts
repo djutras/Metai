@@ -1,30 +1,50 @@
-#!/usr/bin/env node
-import { logCrawlRun } from '../db/logCrawlRun';
+import { neon } from '@neondatabase/serverless';
 
 const workflowName = process.argv[2];
-const runId = process.env.GITHUB_RUN_ID;
-const runNumber = process.env.GITHUB_RUN_NUMBER;
-const actor = process.env.GITHUB_ACTOR;
-const eventName = process.env.GITHUB_EVENT_NAME;
 
 if (!workflowName) {
-  console.error('Usage: node log-crawl-run.ts <workflow-name>');
+  console.error('Usage: npx tsx scripts/log-crawl-run.ts <workflow-name>');
   process.exit(1);
 }
 
-const metadata = {
-  runNumber,
-  actor,
-  eventName,
-  triggeredAt: new Date().toISOString()
-};
+const DATABASE_URL = process.env.DATABASE_URL;
 
-logCrawlRun(workflowName, runId, metadata)
-  .then(() => {
-    console.log('Successfully logged crawl run');
-    process.exit(0);
-  })
-  .catch((error) => {
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL environment variable is required');
+  process.exit(1);
+}
+
+async function logCrawlRun() {
+  const sql = neon(DATABASE_URL);
+
+  try {
+    // Get GitHub context
+    const runId = process.env.GITHUB_RUN_ID || null;
+    const actor = process.env.GITHUB_ACTOR || null;
+    const event = process.env.GITHUB_EVENT_NAME || null;
+    const repository = process.env.GITHUB_REPOSITORY || null;
+
+    const metadata = {
+      repository,
+      runId,
+      actor,
+      event,
+      runUrl: runId ? `https://github.com/${repository}/actions/runs/${runId}` : null,
+    };
+
+    await sql`
+      INSERT INTO crawl_runs (workflow_name, run_id, started_at, metadata)
+      VALUES (${workflowName}, ${runId}, NOW(), ${JSON.stringify(metadata)})
+    `;
+
+    console.log(`✓ Logged crawl run for workflow: ${workflowName}`);
+    console.log(`  Run ID: ${runId}`);
+    console.log(`  Actor: ${actor}`);
+    console.log(`  Event: ${event}`);
+  } catch (error) {
     console.error('Failed to log crawl run:', error);
     process.exit(1);
-  });
+  }
+}
+
+logCrawlRun();
