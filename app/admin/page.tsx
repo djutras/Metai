@@ -3,10 +3,17 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+interface Topic {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [message, setMessage] = useState('');
+  const [topics, setTopics] = useState<Topic[]>([]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -20,6 +27,25 @@ export default function AdminPage() {
       }
     }
   }, []);
+
+  // Load topics when authenticated
+  useEffect(() => {
+    if (authenticated) {
+      loadTopics();
+    }
+  }, [authenticated]);
+
+  const loadTopics = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/get-topics');
+      if (response.ok) {
+        const data = await response.json();
+        setTopics(data);
+      }
+    } catch (error) {
+      console.error('Failed to load topics:', error);
+    }
+  };
 
   // Topic form state
   const [topicData, setTopicData] = useState({
@@ -80,6 +106,8 @@ export default function AdminPage() {
           freshnessHours: 72,
           maxItems: 30,
         });
+        // Reload topics to update the dropdown
+        loadTopics();
       } else {
         const error = await response.text();
         setMessage('Failed to add topic: ' + error);
@@ -345,14 +373,20 @@ export default function AdminPage() {
           </div>
 
           <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>ID_Topics (optional):</label>
-            <input
-              type="number"
+            <label style={{ display: 'block', marginBottom: '5px' }}>Topic (required):</label>
+            <select
               value={sourceData.topicId}
               onChange={(e) => setSourceData({ ...sourceData, topicId: e.target.value })}
-              placeholder="Enter topic ID"
+              required
               style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
-            />
+            >
+              <option value="">Select a topic...</option>
+              {topics.map(topic => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.name} ({topic.slug})
+                </option>
+              ))}
+            </select>
           </div>
 
           <button
