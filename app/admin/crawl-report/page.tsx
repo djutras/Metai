@@ -216,8 +216,37 @@ export default function CrawlReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.sources.map((source) => (
-                    source.articles.map((article, articleIndex) => (
+                  {report.sources.map((source) => {
+                    // Handle sources with no articles
+                    if (source.articles.length === 0) {
+                      return (
+                        <tr key={`${source.source_id}-no-articles`} style={{ borderBottom: '1px solid #dee2e6' }}>
+                          <td
+                            style={{
+                              padding: '12px',
+                              fontWeight: 'bold',
+                              backgroundColor: '#f8f9fa',
+                              verticalAlign: 'top',
+                              borderRight: '2px solid #dee2e6',
+                            }}
+                          >
+                            <div>{source.source_name}</div>
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                              {source.source_domain}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                              (0 articles)
+                            </div>
+                          </td>
+                          <td colSpan={3} style={{ padding: '12px', color: '#999', fontStyle: 'italic' }}>
+                            No articles found
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    // Handle sources with articles (existing logic)
+                    return source.articles.map((article, articleIndex) => (
                       <tr key={`${source.source_id}-${article.id}`} style={{ borderBottom: '1px solid #dee2e6' }}>
                         {articleIndex === 0 ? (
                           <td
@@ -256,8 +285,8 @@ export default function CrawlReportPage() {
                           {formatDate(article.added_at)}
                         </td>
                       </tr>
-                    ))
-                  ))}
+                    ));
+                  })}
                 </tbody>
               </table>
             </div>

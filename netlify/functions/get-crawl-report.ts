@@ -40,8 +40,8 @@ const handler: Handler = async (event: HandlerEvent) => {
         SELECT name FROM topics WHERE id = ${crawl.topic_id}
       `;
 
-      // Get articles added during this crawl (between start and finish times)
-      // Group by source to show which source contributed which articles
+      // Get all sources configured for this topic, with articles found during this crawl
+      // This shows ALL sources attempted, including those that found 0 articles
       const results = await sql`
         SELECT
           s.id as source_id,
@@ -52,34 +52,39 @@ const handler: Handler = async (event: HandlerEvent) => {
           a.canonical_url as article_url,
           a.published_at,
           ta.added_at
-        FROM topic_articles ta
-        JOIN articles a ON ta.article_id = a.id
-        LEFT JOIN sources s ON a.source_id = s.id
-        WHERE ta.topic_id = ${crawl.topic_id}
+        FROM sources_topics st
+        JOIN sources s ON st.source_id = s.id
+        LEFT JOIN articles a ON a.source_id = s.id
+        LEFT JOIN topic_articles ta ON ta.article_id = a.id
+          AND ta.topic_id = ${crawl.topic_id}
           AND ta.added_at >= ${crawl.started_at}
           AND ta.added_at <= ${crawl.finished_at || 'NOW()'}
-        ORDER BY s.name, ta.added_at DESC
+        WHERE st.topic_id = ${crawl.topic_id}
+        ORDER BY s.name, ta.added_at DESC NULLS LAST
       `;
 
       // Group by source
       const sourceMap = new Map();
       results.forEach((row: any) => {
-        const sourceKey = row.source_id || 'unknown';
+        const sourceKey = row.source_id;
         if (!sourceMap.has(sourceKey)) {
           sourceMap.set(sourceKey, {
             source_id: row.source_id,
-            source_name: row.source_name || 'Unknown Source',
-            source_domain: row.source_domain || 'unknown',
+            source_name: row.source_name,
+            source_domain: row.source_domain,
             articles: [],
           });
         }
-        sourceMap.get(sourceKey).articles.push({
-          id: row.article_id,
-          title: row.article_title,
-          url: row.article_url,
-          published_at: row.published_at,
-          added_at: row.added_at,
-        });
+        // Only add article if it exists (article_id is not null)
+        if (row.article_id) {
+          sourceMap.get(sourceKey).articles.push({
+            id: row.article_id,
+            title: row.article_title,
+            url: row.article_url,
+            published_at: row.published_at,
+            added_at: row.added_at,
+          });
+        }
       });
 
       return {
