@@ -11,13 +11,13 @@ export const handler: Handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { name, domain, type } = body;
+    const { name, domain, type, topicId } = body;
 
     const sql = neon(process.env.DATABASE_URL!);
 
     await sql`
-      INSERT INTO sources (name, domain, type, points, enabled)
-      VALUES (${name}, ${domain}, ${type || 'custom_crawler'}, 0, true)
+      INSERT INTO sources (name, domain, type, points, topic_id, enabled)
+      VALUES (${name}, ${domain}, ${type || 'custom_crawler'}, 0, ${topicId || null}, true)
     `;
 
     return {

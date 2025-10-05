@@ -22,6 +22,7 @@ interface Source {
   domain: string;
   type: string;
   points: number;
+  topicId: number | null;
   enabled: boolean;
   lastSeenAt: string | null;
 }
@@ -149,6 +150,7 @@ export default function SearchConfiguredPage() {
                   <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Domain</th>
                   <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Type</th>
                   <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Points</th>
+                  <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>ID_Topics</th>
                   <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Last Seen</th>
                   <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Enabled</th>
                 </tr>
@@ -160,6 +162,7 @@ export default function SearchConfiguredPage() {
                     <td style={{ padding: '12px', border: '1px solid #ddd' }}>{source.domain}</td>
                     <td style={{ padding: '12px', border: '1px solid #ddd' }}>{source.type}</td>
                     <td style={{ padding: '12px', border: '1px solid #ddd' }}>{source.points}</td>
+                    <td style={{ padding: '12px', border: '1px solid #ddd' }}>{source.topicId || '-'}</td>
                     <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                       {source.lastSeenAt ? new Date(source.lastSeenAt).toLocaleDateString() : 'Never'}
                     </td>

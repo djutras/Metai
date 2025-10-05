@@ -13,7 +13,7 @@ export const handler: Handler = async (event) => {
     const sql = neon(process.env.DATABASE_URL!);
 
     const sources = await sql`
-      SELECT id, name, domain, type, points, enabled, last_seen_at as "lastSeenAt"
+      SELECT id, name, domain, type, points, topic_id as "topicId", enabled, last_seen_at as "lastSeenAt"
       FROM sources
       ORDER BY created_at DESC
     `;
