@@ -4,3 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20.17.0"
+
+[functions]
+  external_node_modules = ["jsdom", "canvas", "@mozilla/readability"]
+  node_bundler = "esbuild"
