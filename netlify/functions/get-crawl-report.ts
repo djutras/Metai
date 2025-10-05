@@ -102,7 +102,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }),
       };
     } else {
-      // Get list of recent crawls (last 48 hours)
+      // Get list of ALL recent crawls (last 48 hours)
       const crawls = await sql`
         SELECT
           c.id,
