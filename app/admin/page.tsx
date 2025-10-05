@@ -131,11 +131,12 @@ export default function AdminPage() {
 
       if (response.ok) {
         setMessage('Source added successfully!');
+        // Keep the selected topic_id, only clear name and domain
         setSourceData({
           name: '',
           domain: '',
-          type: 'custom_crawler',
-          topicId: '',
+          type: sourceData.type,
+          topicId: sourceData.topicId, // Persist the selected topic
         });
       } else {
         const error = await response.text();
@@ -383,10 +384,15 @@ export default function AdminPage() {
               <option value="">Select a topic...</option>
               {topics.map(topic => (
                 <option key={topic.id} value={topic.id}>
-                  {topic.name} ({topic.slug})
+                  ID {topic.id} - {topic.name} ({topic.slug})
                 </option>
               ))}
             </select>
+            {sourceData.topicId && (
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                Selected: Topic ID {sourceData.topicId}
+              </p>
+            )}
           </div>
 
           <button
