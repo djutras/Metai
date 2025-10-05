@@ -24,13 +24,13 @@ jobs:
 
       - name: Log crawl run start
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
         run: npx tsx scripts/log-crawl-run.ts "crawl-topics"
         continue-on-error: true
 
       - name: Trigger crawl function
         run: |
-          curl -X POST "${{ secrets.NETLIFY_SITE_URL }}/.netlify/functions/crawl_topic" \
+          curl -X POST "https://${{ vars.NETLIFY_SITE_URL }}/.netlify/functions/crawl_topic" \
             -H "Content-Type: application/json" \
             -d '{}' \
             --max-time 300

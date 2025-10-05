@@ -24,13 +24,13 @@ jobs:
 
       - name: Log crawl run start
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
         run: npx tsx scripts/log-crawl-run.ts "discovery"
         continue-on-error: true
 
       - name: Trigger discovery function
         run: |
-          curl -X POST "${{ secrets.NETLIFY_SITE_URL }}/.netlify/functions/discovery_probe" \
+          curl -X POST "https://${{ vars.NETLIFY_SITE_URL }}/.netlify/functions/discovery_probe" \
             -H "Content-Type: application/json" \
             -d '{}' \
             --max-time 300

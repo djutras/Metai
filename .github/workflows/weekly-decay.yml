@@ -24,13 +24,13 @@ jobs:
 
       - name: Log crawl run start
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
         run: npx tsx scripts/log-crawl-run.ts "weekly-decay"
         continue-on-error: true
 
       - name: Run weekly decay
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
         run: |
           node -e "
           const { weeklyDecay } = require('./src/lib/sources');
