@@ -48,6 +48,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           s.id as source_id,
           s.name as source_name,
           s.domain as source_domain,
+          s.consecutive_failures,
+          s.last_failure_at,
+          s.last_success_at,
+          s.failure_reason,
           a.id as article_id,
           a.title as article_title,
           a.canonical_url as article_url,
@@ -72,6 +76,10 @@ const handler: Handler = async (event: HandlerEvent) => {
             source_id: row.source_id,
             source_name: row.source_name,
             source_domain: row.source_domain,
+            consecutive_failures: row.consecutive_failures || 0,
+            last_failure_at: row.last_failure_at,
+            last_success_at: row.last_success_at,
+            failure_reason: row.failure_reason,
             articles: [],
           });
         }

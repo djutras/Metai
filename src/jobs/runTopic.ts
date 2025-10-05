@@ -8,7 +8,7 @@ import { extractArticle } from '../lib/extract';
 import { isArticle, topicMatchScore } from '../lib/quality';
 import { isDuplicate, upsertArticleAndLink } from '../lib/dedupe';
 import { rankArticles } from '../lib/rank';
-import { bumpSourcePoint } from '../lib/sources';
+import { bumpSourcePoint, recordSourceFailure, recordSourceSuccess, autoDisableFailingSources } from '../lib/sources';
 
 interface CrawlStats {
   kept: number;
@@ -106,11 +106,15 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
         )
       );
 
-    const sites = siteSources.map(s => ({
-      domain: s.domain,
-      indexPaths: (s.apiConfig as any)?.indexPaths || ['/news', '/latest'],
-      maxUrlsPerDomain: 30,
-    }));
+    const sites = siteSources.map(s => {
+      const config = s.apiConfig as any;
+      return {
+        domain: s.domain,
+        indexPaths: config?.indexPaths || ['/news', '/latest'],
+        maxUrlsPerDomain: 30,
+        articlePattern: config?.articlePattern,
+      };
+    });
 
     console.log(`Building frontier for topic ${topicSlug} with ${sites.length} sources`);
 
@@ -131,10 +135,16 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
         const urlObj = new URL(url);
         const domain = urlObj.hostname;
 
+        // Find source for this domain
+        const source = siteSources.find(s => s.domain === domain);
+
         // Check robots.txt
         const robots = await getRobots(domain);
         if (!isAllowed(url, robots)) {
           console.log(`Robots.txt disallows: ${url}`);
+          if (source) {
+            await recordSourceFailure(source.id, 'robots_disallow');
+          }
           continue;
         }
 
@@ -150,11 +160,17 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
         if (result.status === 429 || result.status === 403) {
           setCooldown(domain, 60 * 60 * 1000); // 1 hour
           stats.errors++;
+          if (source) {
+            await recordSourceFailure(source.id, `http_${result.status}`);
+          }
           continue;
         }
 
         if (result.status !== 200) {
           stats.errors++;
+          if (source) {
+            await recordSourceFailure(source.id, `http_${result.status}`);
+          }
           continue;
         }
 
@@ -187,17 +203,33 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
         if (inserted) {
           stats.kept++;
 
-          // Bump source points
-          const source = siteSources.find(s => s.domain === article.source_domain);
+          // Bump source points and record success
           if (source) {
             await bumpSourcePoint(source.id, 1);
+            await recordSourceSuccess(source.id);
           }
         }
       } catch (error) {
         console.error(`Error crawling ${url}:`, error);
         stats.errors++;
+
+        // Record failure for this source
+        try {
+          const urlObj = new URL(url);
+          const domain = urlObj.hostname;
+          const source = siteSources.find(s => s.domain === domain);
+          if (source) {
+            const errorMsg = error instanceof Error ? error.message : 'unknown_error';
+            await recordSourceFailure(source.id, errorMsg.substring(0, 100));
+          }
+        } catch (e) {
+          // Ignore errors when recording failure
+        }
       }
     }
+
+    // Auto-disable sources with 20+ consecutive failures
+    await autoDisableFailingSources(20);
 
     // Update crawl log
     await db
@@ -205,7 +237,12 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
       .set({
         finishedAt: new Date(),
         okBool: true,
-        statsJson: stats,
+        statsJson: {
+          kept: stats.kept,
+          skippedDuplicates: stats.skippedDuplicates,
+          skippedQuality: stats.skippedQuality,
+          errors: stats.errors,
+        },
       })
       .where(eq(crawls.id, crawl.id));
 

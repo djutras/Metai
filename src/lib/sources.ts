@@ -62,3 +62,58 @@ export async function updateSourceLastSeen(sourceId: number): Promise<void> {
     })
     .where(eq(sources.id, sourceId));
 }
+
+/**
+ * Record source failure and increment failure counter
+ */
+export async function recordSourceFailure(
+  sourceId: number,
+  reason: string
+): Promise<void> {
+  await db
+    .update(sources)
+    .set({
+      consecutiveFailures: sql`${sources.consecutiveFailures} + 1`,
+      lastFailureAt: new Date(),
+      failureReason: reason,
+    })
+    .where(eq(sources.id, sourceId));
+}
+
+/**
+ * Record source success and reset failure counter
+ */
+export async function recordSourceSuccess(sourceId: number): Promise<void> {
+  await db
+    .update(sources)
+    .set({
+      consecutiveFailures: 0,
+      lastSuccessAt: new Date(),
+      failureReason: null,
+    })
+    .where(eq(sources.id, sourceId));
+}
+
+/**
+ * Auto-disable sources with too many consecutive failures
+ */
+export async function autoDisableFailingSources(
+  threshold = 20
+): Promise<number> {
+  const result = await db
+    .update(sources)
+    .set({
+      enabled: false,
+    })
+    .where(sql`${sources.consecutiveFailures} >= ${threshold}`)
+    .returning({ id: sources.id, name: sources.name });
+
+  if (result.length > 0) {
+    console.log(
+      `Auto-disabled ${result.length} sources with ${threshold}+ failures:`
+    );
+    result.forEach((s) => console.log(`  - ${s.name}`));
+  }
+
+  return result.length;
+}

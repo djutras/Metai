@@ -30,6 +30,10 @@ interface SourceResult {
   source_id: number | null;
   source_name: string;
   source_domain: string;
+  consecutive_failures: number;
+  last_failure_at: string | null;
+  last_success_at: string | null;
+  failure_reason: string | null;
   articles: Article[];
 }
 
@@ -217,6 +221,17 @@ export default function CrawlReportPage() {
                 </thead>
                 <tbody>
                   {report.sources.map((source) => {
+                    // Helper function to render failure badge
+                    const renderFailureBadge = (failures: number, reason: string | null) => {
+                      if (failures === 0) return null;
+                      const color = failures >= 15 ? '#dc3545' : failures >= 5 ? '#ffc107' : '#6c757d';
+                      return (
+                        <div style={{ fontSize: '11px', color, marginTop: '4px' }}>
+                          ⚠️ {failures} failures {reason && `(${reason})`}
+                        </div>
+                      );
+                    };
+
                     // Handle sources with no articles
                     if (source.articles.length === 0) {
                       return (
@@ -237,6 +252,7 @@ export default function CrawlReportPage() {
                             <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                               (0 articles)
                             </div>
+                            {renderFailureBadge(source.consecutive_failures, source.failure_reason)}
                           </td>
                           <td colSpan={3} style={{ padding: '12px', color: '#999', fontStyle: 'italic' }}>
                             No articles found
@@ -266,6 +282,7 @@ export default function CrawlReportPage() {
                             <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                               ({source.articles.length} articles)
                             </div>
+                            {renderFailureBadge(source.consecutive_failures, source.failure_reason)}
                           </td>
                         ) : null}
                         <td style={{ padding: '12px' }}>

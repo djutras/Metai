@@ -10,7 +10,11 @@ export const sources = pgTable('sources', {
   points: integer('points').default(0).notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   enabled: boolean('enabled').default(true).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  consecutiveFailures: integer('consecutive_failures').default(0).notNull(),
+  lastFailureAt: timestamp('last_failure_at', { withTimezone: true }),
+  lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+  failureReason: text('failure_reason')
 });
 
 // Topics table
