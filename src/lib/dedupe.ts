@@ -4,9 +4,9 @@ import { ExtractedArticle } from './extract';
 import { eq, and, gte, sql } from 'drizzle-orm';
 
 /**
- * Compute 64-bit SimHash of text
+ * Compute 64-bit SimHash of text as hex string
  */
-export function simhash(text: string): Buffer {
+export function simhash(text: string): string {
   const tokens = text.toLowerCase().split(/\s+/).filter(Boolean);
   const vector = new Array(64).fill(0);
 
@@ -26,7 +26,7 @@ export function simhash(text: string): Buffer {
     }
   }
 
-  // Convert vector to binary
+  // Convert vector to hex string
   const bytes = new Uint8Array(8);
   for (let i = 0; i < 64; i++) {
     if (vector[i] > 0) {
@@ -34,18 +34,21 @@ export function simhash(text: string): Buffer {
     }
   }
 
-  return Buffer.from(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
- * Calculate Hamming distance between two buffers
+ * Calculate Hamming distance between two hex hash strings
  */
-function hammingDistance(a: Buffer, b: Buffer): number {
+function hammingDistance(a: string, b: string): number {
   if (a.length !== b.length) return Infinity;
 
   let distance = 0;
-  for (let i = 0; i < a.length; i++) {
-    const xor = a[i] ^ b[i];
+  for (let i = 0; i < a.length; i += 2) {
+    const byteA = parseInt(a.substring(i, i + 2), 16);
+    const byteB = parseInt(b.substring(i, i + 2), 16);
+    const xor = byteA ^ byteB;
+
     // Count set bits
     let bits = xor;
     while (bits > 0) {

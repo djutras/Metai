@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb, bigserial, bytea } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, bigserial } from 'drizzle-orm/pg-core';
 
 // Sources table
 export const sources = pgTable('sources', {
@@ -40,7 +40,7 @@ export const articles = pgTable('articles', {
   publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
   lang: text('lang'),
   imageUrl: text('image_url'),
-  simhash: bytea('simhash'),
+  simhash: text('simhash'),
   paywalledBool: boolean('paywalled_bool').default(false).notNull(),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull()
 });
