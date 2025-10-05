@@ -42,6 +42,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
       // Get all sources configured for this topic, with articles found during this crawl
       // This shows ALL sources attempted, including those that found 0 articles
+      // Only shows articles that are linked to THIS specific topic (not other topics)
       const results = await sql`
         SELECT
           s.id as source_id,
@@ -54,11 +55,10 @@ const handler: Handler = async (event: HandlerEvent) => {
           ta.added_at
         FROM sources_topics st
         JOIN sources s ON st.source_id = s.id
-        LEFT JOIN articles a ON a.source_id = s.id
-        LEFT JOIN topic_articles ta ON ta.article_id = a.id
-          AND ta.topic_id = ${crawl.topic_id}
+        LEFT JOIN topic_articles ta ON ta.topic_id = ${crawl.topic_id}
           AND ta.added_at >= ${crawl.started_at}
           AND ta.added_at <= ${crawl.finished_at || 'NOW()'}
+        LEFT JOIN articles a ON a.id = ta.article_id AND a.source_id = s.id
         WHERE st.topic_id = ${crawl.topic_id}
         ORDER BY s.name, ta.added_at DESC NULLS LAST
       `;
