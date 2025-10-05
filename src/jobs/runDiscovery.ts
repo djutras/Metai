@@ -42,9 +42,10 @@ async function mineOutboundLinks(): Promise<string[]> {
   const recentArticles = await db
     .select({
       canonicalUrl: articles.canonicalUrl,
-      sourceDomain: articles.source_domain,
+      sourceDomain: sources.domain,
     })
     .from(articles)
+    .leftJoin(sources, eq(articles.sourceId, sources.id))
     .where(sql`${articles.firstSeenAt} >= ${sevenDaysAgo}`)
     .limit(100);
 
