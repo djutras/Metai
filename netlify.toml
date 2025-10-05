@@ -1,4 +1,4 @@
-[[build]]
+[build]
   command = "npm run build"
   publish = ".next"
 
@@ -9,18 +9,5 @@
   node_bundler = "esbuild"
   directory = "netlify/functions"
 
-# Scheduled Functions
-[[functions]]
-  path = "/crawl-topic"
-  schedule = "5 * * * *"  # Hourly at 5 minutes past
-
-[[functions]]
-  path = "/discovery-probe"
-  schedule = "0 3 * * *"  # Daily at 3:00 AM UTC
-
-# Redirects for Next.js
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  conditions = {Role = ["api"]}
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
