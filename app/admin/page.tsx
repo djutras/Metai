@@ -214,6 +214,18 @@ export default function AdminPage() {
           >
             Search Configured
           </Link>
+          <Link
+            href="/admin/crawl-report"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#007bff',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '4px',
+            }}
+          >
+            Crawl Report
+          </Link>
         </div>
       </div>
 
