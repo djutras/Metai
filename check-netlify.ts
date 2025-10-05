@@ -7,7 +7,10 @@ async function checkNetlifyDeploy() {
 
   try {
     console.log('Navigating to Netlify deploys page...');
-    await page.goto('https://app.netlify.com/projects/obscureai/deploys', { timeout: 60000 });
+    await page.goto('https://app.netlify.com/projects/obscureai/deploys', { timeout: 60000, waitUntil: 'domcontentloaded' });
+
+    // Reload to get latest deploys
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     // Wait for the page to load
     await page.waitForTimeout(5000);
@@ -16,6 +19,18 @@ async function checkNetlifyDeploy() {
     const firstDeploy = page.locator('[data-testid="deploy-card"]').first();
     const deployText = await firstDeploy.textContent().catch(() => '');
     console.log('First deploy status:', deployText?.substring(0, 200));
+
+    // Look for a PUBLISHED deploy
+    const publishedButton = page.locator('text=Published').first();
+    const isPublishedVisible = await publishedButton.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (isPublishedVisible) {
+      console.log('✅ Found successful published deploy!');
+      await page.screenshot({ path: 'netlify-success.png', fullPage: true });
+      console.log('Screenshot saved to netlify-success.png');
+      console.log('\nThe site is successfully deployed at https://obscureai.netlify.app/');
+      return;
+    }
 
     // Look for failed deploy
     const failedButton = page.locator('text=Failed').first();
