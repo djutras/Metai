@@ -23,7 +23,7 @@ interface CrawlStats {
  */
 async function acquireTopicLock(topicId: number): Promise<boolean> {
   const result = await sql`SELECT pg_try_advisory_lock(${topicId})`;
-  return result.rows[0].pg_try_advisory_lock;
+  return result[0].pg_try_advisory_lock;
 }
 
 /**
