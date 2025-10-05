@@ -152,7 +152,10 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
         }
 
         // Quality gate
-        if (!isArticle(article, topic)) {
+        if (!isArticle(article, {
+          ...topic,
+          query: topic.query ?? undefined,
+        })) {
           stats.skippedQuality++;
           continue;
         }
