@@ -148,7 +148,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     console.log(`Starting source discovery for topic ${topicId}`);
 
-    // Get recent articles for this topic (last 10 to stay under timeout)
+    // Get recent articles for this topic (last 3 to stay under Netlify 10s timeout)
     const articles = await sql`
       SELECT
         a.id,
@@ -161,7 +161,7 @@ const handler: Handler = async (event: HandlerEvent) => {
       LEFT JOIN sources s ON a.source_id = s.id
       WHERE ta.topic_id = ${topicId}
       ORDER BY ta.added_at DESC
-      LIMIT 10
+      LIMIT 3
     `;
 
     console.log(`Analyzing ${articles.length} articles for outbound links (Netlify timeout: 10s)`);
@@ -204,53 +204,49 @@ const handler: Handler = async (event: HandlerEvent) => {
           `;
           if (existingSource.length > 0) continue;
 
-          console.log(`Testing new domain: ${domain}`);
+          console.log(`Found new domain: ${domain}`);
 
-          // Test crawlability
-          const crawlability = await testDomainCrawlability(domain);
+          // Skip crawlability tests to avoid timeout - just save the domain with default score
+          const defaultScore = 5;
 
-          // Only keep domains with some score
-          if (crawlability.score > 0) {
-            // Save to candidate_domains
-            const existingCandidate = await sql`
-              SELECT id FROM candidate_domains WHERE domain = ${cleanDomain} LIMIT 1
+          // Save to candidate_domains
+          const existingCandidate = await sql`
+            SELECT id FROM candidate_domains WHERE domain = ${cleanDomain} LIMIT 1
+          `;
+
+          if (existingCandidate.length === 0) {
+            await sql`
+              INSERT INTO candidate_domains (domain, discovered_via, score, first_seen_at, last_seen_at)
+              VALUES (${cleanDomain}, ${article.source_name || sourceDomain}, ${defaultScore}, NOW(), NOW())
             `;
-
-            if (existingCandidate.length === 0) {
-              await sql`
-                INSERT INTO candidate_domains (domain, discovered_via, score, first_seen_at, last_seen_at)
-                VALUES (${cleanDomain}, ${article.source_name || sourceDomain}, ${crawlability.score}, NOW(), NOW())
-              `;
-            } else {
-              await sql`
-                UPDATE candidate_domains
-                SET last_seen_at = NOW(),
-                    score = GREATEST(score, ${crawlability.score})
-                WHERE id = ${existingCandidate[0].id}
-              `;
-            }
-
-            // Award discovery points to the source
-            if (article.source_id) {
-              await sql`
-                UPDATE sources
-                SET discovery_points = discovery_points + 1
-                WHERE id = ${article.source_id}
-              `;
-            }
-
-            discoveries.push({
-              domain,
-              discovered_via: article.source_name || sourceDomain,
-              discovered_in: article.canonical_url,
-              score: crawlability.score,
-              has_sitemap: crawlability.hasSitemap,
-              has_rss: crawlability.hasRSS,
-              https_enabled: crawlability.httpsEnabled
-            });
-
-            console.log(`✅ Discovered: ${domain} (score: ${crawlability.score})`);
+          } else {
+            await sql`
+              UPDATE candidate_domains
+              SET last_seen_at = NOW()
+              WHERE id = ${existingCandidate[0].id}
+            `;
           }
+
+          // Award discovery points to the source
+          if (article.source_id) {
+            await sql`
+              UPDATE sources
+              SET discovery_points = discovery_points + 1
+              WHERE id = ${article.source_id}
+            `;
+          }
+
+          discoveries.push({
+            domain,
+            discovered_via: article.source_name || sourceDomain,
+            discovered_in: article.canonical_url,
+            score: defaultScore,
+            has_sitemap: false,
+            has_rss: false,
+            https_enabled: false
+          });
+
+          console.log(`✅ Discovered: ${domain}`);
         }
       } catch (error) {
         console.error(`Error processing article ${article.canonical_url}:`, error);
