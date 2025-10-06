@@ -110,7 +110,7 @@ const handler: Handler = async (event: HandlerEvent) => {
         }),
       };
     } else {
-      // Get list of ALL recent crawls (last 48 hours)
+      // Get list of recent crawls (finished in last 48 hours OR currently running)
       const crawls = await sql`
         SELECT
           c.id,
@@ -122,7 +122,8 @@ const handler: Handler = async (event: HandlerEvent) => {
           t.name as topic_name
         FROM crawls c
         LEFT JOIN topics t ON c.topic_id = t.id
-        WHERE c.started_at >= NOW() - INTERVAL '48 hours'
+        WHERE c.finished_at >= NOW() - INTERVAL '48 hours'
+           OR (c.finished_at IS NULL AND c.started_at >= NOW() - INTERVAL '48 hours')
         ORDER BY c.started_at DESC
         LIMIT 50
       `;
