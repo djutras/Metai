@@ -31,7 +31,6 @@ jobs:
       - name: Run discovery
         env:
           DATABASE_URL: ${{ vars.DATABASE_URL }}
-          BING_SEARCH_API_KEY: ${{ secrets.BING_SEARCH_API_KEY }}
           BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
         run: npx tsx scripts/run-discovery.ts
         timeout-minutes: 30

@@ -101,57 +101,6 @@ export async function searchDuckDuckGo(query: string, maxResults: number = 20): 
   return results;
 }
 
-/**
- * Search Bing Web Search API
- * Requires BING_SEARCH_API_KEY environment variable
- */
-export async function searchBing(query: string, maxResults: number = 20): Promise<SearchResult[]> {
-  const results: SearchResult[] = [];
-  const apiKey = process.env.BING_SEARCH_API_KEY;
-
-  if (!apiKey) {
-    console.warn('BING_SEARCH_API_KEY not set, skipping Bing search');
-    return results;
-  }
-
-  try {
-    const searchUrl = `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=${maxResults}`;
-
-    const response = await fetch(searchUrl, {
-      headers: {
-        'Ocp-Apim-Subscription-Key': apiKey,
-      },
-    });
-
-    if (!response.ok) {
-      console.warn(`Bing search failed with status ${response.status}`);
-      return results;
-    }
-
-    const data = await response.json() as any;
-
-    if (data.webPages?.value) {
-      for (const item of data.webPages.value) {
-        try {
-          const urlObj = new URL(item.url);
-          const domain = urlObj.hostname.replace(/^www\./, '');
-
-          results.push({
-            domain,
-            url: item.url,
-            title: item.name,
-          });
-        } catch {
-          // Skip invalid URL
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Bing search error:', error);
-  }
-
-  return results;
-}
 
 /**
  * Search Brave Search API
@@ -212,17 +161,15 @@ export async function searchBrave(query: string, maxResults: number = 20): Promi
 export async function searchAllEngines(query: string, maxPerEngine: number = 20): Promise<string[]> {
   console.log(`Searching for: "${query}"`);
 
-  const [ddgResults, bingResults, braveResults] = await Promise.all([
+  const [ddgResults, braveResults] = await Promise.all([
     searchDuckDuckGo(query, maxPerEngine),
-    searchBing(query, maxPerEngine),
     searchBrave(query, maxPerEngine),
   ]);
 
-  const allResults = [...ddgResults, ...bingResults, ...braveResults];
+  const allResults = [...ddgResults, ...braveResults];
   const domains = extractDomainsFromUrls(allResults.map(r => r.url));
 
   console.log(`  DuckDuckGo: ${ddgResults.length} results`);
-  console.log(`  Bing: ${bingResults.length} results`);
   console.log(`  Brave: ${braveResults.length} results`);
   console.log(`  Unique domains: ${domains.length}`);
 
