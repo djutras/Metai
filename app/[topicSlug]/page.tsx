@@ -63,9 +63,34 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
 
   console.log(`[${topicSlug}] Query returned ${articlesList.length} articles (maxItems: ${topic.maxItems}, filter: ${filter})`);
 
+  // Filter articles to ensure they contain topic keywords (additional safeguard)
+  const topicKeywords: string[] = [];
+  if (topic.query) {
+    topicKeywords.push(...topic.query.toLowerCase().split(/\s+/).filter((k: string) => k.length >= 3));
+  }
+  if (topic.includes && Array.isArray(topic.includes) && topic.includes.length > 0) {
+    topicKeywords.push(...topic.includes.map((k: string) => k.toLowerCase()));
+  }
+
+  const filteredArticles = articlesList.filter(article => {
+    // If no topic keywords defined, allow all articles
+    if (topicKeywords.length === 0) return true;
+
+    const titleText = (article.title || '').toLowerCase();
+    const summaryText = (article.summary || '').toLowerCase();
+
+    // Check if any topic keyword appears in title or summary
+    return topicKeywords.some(keyword => {
+      const pattern = new RegExp(keyword, 'i');
+      return pattern.test(titleText) || pattern.test(summaryText);
+    });
+  });
+
+  console.log(`[${topicSlug}] Filtered to ${filteredArticles.length} articles with topic keywords`);
+
   // Calculate last update based on most recent article publish date
-  const lastUpdate = articlesList.length > 0
-    ? Math.floor((Date.now() - new Date(articlesList[0].publishedAt).getTime()) / (1000 * 60))
+  const lastUpdate = filteredArticles.length > 0
+    ? Math.floor((Date.now() - new Date(filteredArticles[0].publishedAt).getTime()) / (1000 * 60))
     : 0;
 
   return (
@@ -75,7 +100,7 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
         <p className="meta-row">
           <span>Updated {lastUpdate} min ago</span>
           <span>•</span>
-          <span>{articlesList.length} articles</span>
+          <span>{filteredArticles.length} articles</span>
         </p>
       </header>
 
@@ -90,7 +115,7 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
 
       {/* Articles */}
       <div className="grid-16">
-        {articlesList.map(article => (
+        {filteredArticles.map(article => (
           <article key={article.id} className="card">
             <a href={article.canonicalUrl} target="_blank" rel="noopener noreferrer">
               <h2 className="mb-2">{article.title}</h2>
@@ -105,7 +130,7 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
         ))}
       </div>
 
-      {articlesList.length === 0 && (
+      {filteredArticles.length === 0 && (
         <p className="text-center mt-12">No articles found for this filter.</p>
       )}
     </div>

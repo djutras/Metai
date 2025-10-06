@@ -47,7 +47,7 @@ export function isArticle(article: ExtractedArticle, topic: Topic): boolean {
   const blacklistPatterns = [
     /\bopinion\b/i,
     /\b(é|e)ditorial\b/i,
-    /\bsponsori(s|z)ed\b/i,
+    /\bsponsored\b/i,
     /\badvertorial\b/i,
     /\bpublicit(é|y)\b/i,
     /\bpartner\s+content\b/i,
@@ -59,6 +59,42 @@ export function isArticle(article: ExtractedArticle, topic: Topic): boolean {
   for (const pattern of blacklistPatterns) {
     if (pattern.test(textToCheck)) {
       console.log(`[Quality] Rejected - blacklist: ${pattern}`);
+      return false;
+    }
+  }
+
+  // Topic keyword validation - mandatory check
+  // Article MUST contain at least one topic keyword in title OR summary
+  const topicKeywords: string[] = [];
+
+  // Collect keywords from topic.query
+  if (topic.query) {
+    topicKeywords.push(...topic.query.toLowerCase().split(/\s+/).filter(k => k.length >= 3));
+  }
+
+  // Collect keywords from topic.includes
+  if (topic.includes && topic.includes.length > 0) {
+    topicKeywords.push(...topic.includes.map(k => k.toLowerCase()));
+  }
+
+  // If topic has keywords, validate they appear in title or summary
+  if (topicKeywords.length > 0) {
+    const titleText = (article.title || '').toLowerCase();
+    const summaryText = (article.summary || '').toLowerCase();
+
+    let hasTopicMatch = false;
+
+    for (const keyword of topicKeywords) {
+      // Case-insensitive, partial match (e.g., "trump" matches "Trump's", "Donald Trump")
+      const pattern = new RegExp(keyword, 'i');
+      if (pattern.test(titleText) || pattern.test(summaryText)) {
+        hasTopicMatch = true;
+        break;
+      }
+    }
+
+    if (!hasTopicMatch) {
+      console.log(`[Quality] Rejected - no topic keywords found. Required: [${topicKeywords.join(', ')}]`);
       return false;
     }
   }

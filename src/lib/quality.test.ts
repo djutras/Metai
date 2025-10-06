@@ -51,9 +51,132 @@ describe('isArticle', () => {
   it('should reject sponsored content', () => {
     const article = {
       ...mockArticle,
-      summary: mockArticle.summary + ' This is sponsored content from our partners.',
+      summary: mockArticle.summary + ' This article is sponsored by our partners.',
     };
     expect(isArticle(article, mockTopic)).toBe(false);
+  });
+
+  // Topic keyword validation tests
+  describe('topic keyword validation', () => {
+    it('should accept article with topic keyword in title', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: 'Trump',
+        includes: [],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'Trump Announces New Policy Changes',
+        summary: 'This is a lengthy article about various political developments in Washington DC. The article covers multiple aspects of the current administration and provides detailed analysis of recent events.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
+
+    it('should accept article with topic keyword in summary', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: 'Trump',
+        includes: [],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'Major Political Developments in Washington',
+        summary: 'This lengthy article discusses Donald Trump and his recent policy initiatives. The former president has been making headlines with various announcements and campaign events across the country.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
+
+    it('should reject article without any topic keywords', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: 'Trump',
+        includes: [],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'Biden Administration Announces Infrastructure Plan',
+        summary: 'The current administration has unveiled a comprehensive infrastructure package aimed at modernizing the nation highways bridges and public transportation systems. The proposal includes significant funding allocations.',
+      };
+      expect(isArticle(article, topic)).toBe(false);
+    });
+
+    it('should support case-insensitive matching', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: 'trump',
+        includes: [],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'TRUMP Makes Campaign Stop in Iowa',
+        summary: 'The presidential candidate visited multiple cities during a campaign tour focusing on economic issues and border security policies that resonate with local voters.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
+
+    it('should support partial matches', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: 'Trump',
+        includes: [],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: "Analysis of Trump's Economic Policies",
+        summary: 'This comprehensive analysis examines the economic proposals put forward by the candidate including tax reform trade policies and regulatory changes that could impact various sectors.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
+
+    it('should match keywords from includes array', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: '',
+        includes: ['cryptocurrency', 'bitcoin'],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'Bitcoin Reaches New All-Time High',
+        summary: 'The leading cryptocurrency has surged to record levels amid growing institutional adoption and favorable regulatory developments in major markets around the world.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
+
+    it('should match any keyword from query or includes', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: 'election campaign',
+        includes: ['Trump', 'Biden'],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'Presidential Campaign Intensifies',
+        summary: 'As the campaign season heats up candidates are increasing their public appearances and advertising spending in key battleground states ahead of the upcoming primaries.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
+
+    it('should allow articles when no topic keywords are defined', () => {
+      const topic = {
+        freshnessHours: 72,
+        query: '',
+        includes: [],
+        excludes: [],
+      };
+      const article = {
+        ...mockArticle,
+        title: 'Generic News Article',
+        summary: 'This is a generic news article about various events happening around the world including politics sports entertainment and business developments.',
+      };
+      expect(isArticle(article, topic)).toBe(true);
+    });
   });
 });
 
