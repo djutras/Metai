@@ -33,5 +33,5 @@ jobs:
           curl -X POST "https://${{ vars.NETLIFY_SITE_URL }}/.netlify/functions/crawl_topic" \
             -H "Content-Type: application/json" \
             -d '{}' \
-            --max-time 300
+            --max-time 2700
         continue-on-error: true
