@@ -68,23 +68,24 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
     };
   }
 
-  try {
-    // Create crawl log
-    const [crawl] = await db
-      .insert(crawls)
-      .values({
-        topicId: topic.id,
-        startedAt: new Date(),
-      })
-      .returning({ id: crawls.id });
+  // Create crawl log
+  const [crawl] = await db
+    .insert(crawls)
+    .values({
+      topicId: topic.id,
+      startedAt: new Date(),
+    })
+    .returning({ id: crawls.id });
 
-    const stats: CrawlStats = {
-      kept: 0,
-      skippedDuplicates: 0,
-      skippedQuality: 0,
-      errors: 0,
-      crawlId: crawl.id,
-    };
+  const stats: CrawlStats = {
+    kept: 0,
+    skippedDuplicates: 0,
+    skippedQuality: 0,
+    errors: 0,
+    crawlId: crawl.id,
+  };
+
+  try {
 
     // Load sources for this topic via junction table
     const siteSources = await db
@@ -249,6 +250,26 @@ async function runTopicCrawl(topicSlug: string): Promise<CrawlStats> {
     console.log(`Topic ${topicSlug} crawl complete:`, stats);
 
     return stats;
+  } catch (error) {
+    console.error(`Fatal error in topic ${topicSlug} crawl:`, error);
+
+    // Mark crawl as failed
+    await db
+      .update(crawls)
+      .set({
+        finishedAt: new Date(),
+        okBool: false,
+        statsJson: {
+          kept: stats.kept,
+          skippedDuplicates: stats.skippedDuplicates,
+          skippedQuality: stats.skippedQuality,
+          errors: stats.errors + 1,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      })
+      .where(eq(crawls.id, crawl.id));
+
+    throw error;
   } finally {
     // Release lock
     await releaseTopicLock(topic.id);
