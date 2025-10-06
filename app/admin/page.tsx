@@ -14,6 +14,8 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [message, setMessage] = useState('');
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [discoveryTopic, setDiscoveryTopic] = useState('');
+  const [discoveryRunning, setDiscoveryRunning] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -147,6 +149,33 @@ export default function AdminPage() {
     }
   };
 
+  const handleTriggerDiscovery = async () => {
+    setDiscoveryRunning(true);
+    setMessage('');
+
+    try {
+      const response = await fetch('/.netlify/functions/trigger-discovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicSlug: discoveryTopic || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(data.message + ' - Check GitHub Actions for progress.');
+      } else {
+        setMessage('Failed to trigger discovery: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      setMessage('Error: ' + error);
+    } finally {
+      setDiscoveryRunning(false);
+    }
+  };
+
   if (!authenticated) {
     return (
       <div style={{ maxWidth: '400px', margin: '100px auto', padding: '20px' }}>
@@ -258,14 +287,58 @@ export default function AdminPage() {
           style={{
             padding: '10px',
             marginBottom: '20px',
-            backgroundColor: message.includes('success') ? '#d4edda' : '#f8d7da',
-            color: message.includes('success') ? '#155724' : '#721c24',
+            backgroundColor: message.includes('success') || message.includes('started') ? '#d4edda' : '#f8d7da',
+            color: message.includes('success') || message.includes('started') ? '#155724' : '#721c24',
             borderRadius: '4px',
           }}
         >
           {message}
         </div>
       )}
+
+      <div style={{ marginBottom: '50px', padding: '20px', border: '2px solid #28a745', borderRadius: '8px', backgroundColor: '#f8f9fa' }}>
+        <h2 style={{ marginBottom: '20px', color: '#28a745' }}>🔍 Search Engine Discovery</h2>
+        <p style={{ marginBottom: '15px', color: '#666' }}>
+          Trigger discovery to search DuckDuckGo, Brave, Reddit, and news aggregators for new sources.
+        </p>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={discoveryTopic}
+            onChange={(e) => setDiscoveryTopic(e.target.value)}
+            style={{
+              padding: '10px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              minWidth: '200px',
+            }}
+          >
+            <option value="">All Topics</option>
+            {topics.map(topic => (
+              <option key={topic.id} value={topic.slug}>
+                {topic.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleTriggerDiscovery}
+            disabled={discoveryRunning}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: discoveryRunning ? '#6c757d' : '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: discoveryRunning ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            {discoveryRunning ? 'Starting...' : 'Start Discovery'}
+          </button>
+        </div>
+        <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+          Results will appear in the <a href="/admin/candidates" style={{ color: '#28a745' }}>Candidates page</a> after completion.
+        </p>
+      </div>
 
       <div style={{ marginBottom: '50px' }}>
         <h2 style={{ marginBottom: '20px' }}>Add Topic</h2>
