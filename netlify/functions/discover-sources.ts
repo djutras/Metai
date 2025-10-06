@@ -1,18 +1,128 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { neon } from '@neondatabase/serverless';
-import {
-  extractLinksFromHTML,
-  isMainstreamDomain,
-  testDomainCrawlability,
-  isExistingSource,
-  saveDiscoveredDomain,
-  awardDiscoveryPoints
-} from '../../src/lib/discover';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
+}
+
+// Mainstream domains to exclude from discovery
+const MAINSTREAM_DOMAINS = new Set([
+  'nytimes.com', 'washingtonpost.com', 'wsj.com', 'ft.com',
+  'cnn.com', 'bbc.com', 'reuters.com', 'apnews.com',
+  'theguardian.com', 'bloomberg.com', 'economist.com',
+  'twitter.com', 'x.com', 'facebook.com', 'youtube.com',
+  'instagram.com', 'linkedin.com', 'reddit.com', 'tiktok.com',
+  'google.com', 'wikipedia.org', 'amazon.com'
+]);
+
+/**
+ * Extract all external links from article HTML content
+ */
+function extractLinksFromHTML(html: string, currentDomain: string): string[] {
+  const links: string[] = [];
+  const hrefRegex = /href=["']([^"']+)["']/gi;
+  let match;
+
+  while ((match = hrefRegex.exec(html)) !== null) {
+    const url = match[1];
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      continue;
+    }
+
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace(/^www\./, '');
+
+      if (domain === currentDomain.replace(/^www\./, '')) {
+        continue;
+      }
+
+      links.push(domain);
+    } catch (e) {
+      continue;
+    }
+  }
+
+  return [...new Set(links)];
+}
+
+/**
+ * Check if a domain is mainstream/well-known
+ */
+function isMainstreamDomain(domain: string): boolean {
+  const cleanDomain = domain.replace(/^www\./, '').toLowerCase();
+  return MAINSTREAM_DOMAINS.has(cleanDomain);
+}
+
+/**
+ * Test if a domain is crawlable
+ */
+async function testDomainCrawlability(domain: string): Promise<{
+  hasSitemap: boolean;
+  hasRSS: boolean;
+  httpsEnabled: boolean;
+  score: number;
+}> {
+  const result = {
+    hasSitemap: false,
+    hasRSS: false,
+    httpsEnabled: false,
+    score: 0
+  };
+
+  try {
+    const httpsUrl = `https://${domain}`;
+    try {
+      const response = await fetch(httpsUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000)
+      });
+      if (response.ok) {
+        result.httpsEnabled = true;
+        result.score += 5;
+      }
+    } catch (e) {
+      // HTTPS failed
+    }
+
+    const sitemapUrl = `https://${domain}/sitemap.xml`;
+    try {
+      const response = await fetch(sitemapUrl, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000)
+      });
+      if (response.ok) {
+        result.hasSitemap = true;
+        result.score += 10;
+      }
+    } catch (e) {
+      // No sitemap
+    }
+
+    const rssPaths = ['/rss', '/feed', '/rss.xml', '/feed.xml', '/atom.xml'];
+    for (const path of rssPaths) {
+      try {
+        const response = await fetch(`https://${domain}${path}`, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000)
+        });
+        if (response.ok) {
+          result.hasRSS = true;
+          result.score += 10;
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+  } catch (error) {
+    console.error(`Error testing ${domain}:`, error);
+  }
+
+  return result;
 }
 
 const handler: Handler = async (event: HandlerEvent) => {
@@ -84,8 +194,11 @@ const handler: Handler = async (event: HandlerEvent) => {
           if (isMainstreamDomain(domain)) continue;
 
           // Check if already a configured source
-          const exists = await isExistingSource(domain);
-          if (exists) continue;
+          const cleanDomain = domain.replace(/^www\./, '');
+          const existingSource = await sql`
+            SELECT id FROM sources WHERE domain = ${cleanDomain} LIMIT 1
+          `;
+          if (existingSource.length > 0) continue;
 
           console.log(`Testing new domain: ${domain}`);
 
@@ -95,15 +208,31 @@ const handler: Handler = async (event: HandlerEvent) => {
           // Only keep domains with some score
           if (crawlability.score > 0) {
             // Save to candidate_domains
-            await saveDiscoveredDomain(
-              domain,
-              article.source_name || sourceDomain,
-              crawlability.score
-            );
+            const existingCandidate = await sql`
+              SELECT id FROM candidate_domains WHERE domain = ${cleanDomain} LIMIT 1
+            `;
+
+            if (existingCandidate.length === 0) {
+              await sql`
+                INSERT INTO candidate_domains (domain, discovered_via, score, first_seen_at, last_seen_at)
+                VALUES (${cleanDomain}, ${article.source_name || sourceDomain}, ${crawlability.score}, NOW(), NOW())
+              `;
+            } else {
+              await sql`
+                UPDATE candidate_domains
+                SET last_seen_at = NOW(),
+                    score = GREATEST(score, ${crawlability.score})
+                WHERE id = ${existingCandidate[0].id}
+              `;
+            }
 
             // Award discovery points to the source
             if (article.source_id) {
-              await awardDiscoveryPoints(article.source_id, 1);
+              await sql`
+                UPDATE sources
+                SET discovery_points = discovery_points + 1
+                WHERE id = ${article.source_id}
+              `;
             }
 
             discoveries.push({
