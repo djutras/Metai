@@ -8,6 +8,17 @@ interface PageProps {
   searchParams: { filter?: string; lang?: string };
 }
 
+// Decode HTML entities
+function decodeHtml(html: string): string {
+  return html
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'");
+}
+
 export default async function TopicPage({ params, searchParams }: PageProps) {
   const { topicSlug } = params;
   const { filter = '48h', lang } = searchParams;
@@ -118,8 +129,8 @@ export default async function TopicPage({ params, searchParams }: PageProps) {
         {filteredArticles.map(article => (
           <article key={article.id} className="card">
             <a href={article.canonicalUrl} target="_blank" rel="noopener noreferrer">
-              <h2 className="mb-2">{article.title}</h2>
-              <p className="mb-3 max-w-prose">{article.summary?.slice(0, 200)}...</p>
+              <h2 className="mb-2">{decodeHtml(article.title)}</h2>
+              <p className="mb-3 max-w-prose">{decodeHtml(article.summary?.slice(0, 200) || '')}...</p>
               <div className="meta-row">
                 <span className="chip">{article.sourceDomain}</span>
                 {article.paywalledBool && <span className="chip">Paywall</span>}
