@@ -14,13 +14,24 @@ interface CandidateDomain {
   notes: string | null;
 }
 
+interface Topic {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<CandidateDomain[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [selectedTopics, setSelectedTopics] = useState<{ [key: number]: string }>({});
+  const [promoting, setPromoting] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     loadCandidates();
+    loadTopics();
   }, []);
 
   const loadCandidates = async () => {
@@ -38,6 +49,56 @@ export default function CandidatesPage() {
       setError('Error loading candidates: ' + error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTopics = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/get-topics');
+      if (response.ok) {
+        const data = await response.json();
+        setTopics(data);
+      }
+    } catch (error) {
+      console.error('Failed to load topics:', error);
+    }
+  };
+
+  const handlePromote = async (candidateId: number) => {
+    const topicId = selectedTopics[candidateId];
+
+    if (!topicId) {
+      setMessage('Please select a topic first');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    setPromoting({ ...promoting, [candidateId]: true });
+    setMessage('');
+
+    try {
+      const response = await fetch('/.netlify/functions/promote-candidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId, topicId: parseInt(topicId) })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMessage(`Successfully promoted ${data.domain} to sources!`);
+
+        // Remove candidate from list
+        setCandidates(candidates.filter(c => c.id !== candidateId));
+
+        setTimeout(() => setMessage(''), 5000);
+      } else {
+        const errorData = await response.text();
+        setMessage(`Failed to promote: ${errorData}`);
+      }
+    } catch (error) {
+      setMessage(`Error: ${error}`);
+    } finally {
+      setPromoting({ ...promoting, [candidateId]: false });
     }
   };
 
@@ -95,6 +156,18 @@ export default function CandidatesPage() {
         </div>
       )}
 
+      {message && (
+        <div style={{
+          padding: '10px',
+          marginBottom: '20px',
+          backgroundColor: message.includes('Success') ? '#d4edda' : '#f8d7da',
+          color: message.includes('Success') ? '#155724' : '#721c24',
+          borderRadius: '4px',
+        }}>
+          {message}
+        </div>
+      )}
+
       {!loading && !error && candidates.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
           <p>No candidate domains found yet.</p>
@@ -119,12 +192,12 @@ export default function CandidatesPage() {
             }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '25%' }}>Domain</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>Discovered Via</th>
-                  <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', width: '10%' }}>Score</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '15%' }}>First Seen</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '15%' }}>Last Seen</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', width: '15%' }}>Notes</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Domain</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Discovered Via</th>
+                  <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>Score</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>First Seen</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Last Seen</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Add to Topic</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,8 +225,45 @@ export default function CandidatesPage() {
                     <td style={{ padding: '12px', fontSize: '13px', color: '#666' }}>
                       {formatDate(candidate.last_seen_at)}
                     </td>
-                    <td style={{ padding: '12px', fontSize: '13px', color: '#666' }}>
-                      {candidate.notes || '-'}
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <select
+                          value={selectedTopics[candidate.id] || ''}
+                          onChange={(e) => setSelectedTopics({ ...selectedTopics, [candidate.id]: e.target.value })}
+                          disabled={promoting[candidate.id]}
+                          style={{
+                            padding: '6px 10px',
+                            fontSize: '14px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            flex: 1
+                          }}
+                        >
+                          <option value="">Select topic...</option>
+                          {topics.map((topic) => (
+                            <option key={topic.id} value={topic.id}>
+                              {topic.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handlePromote(candidate.id)}
+                          disabled={promoting[candidate.id] || !selectedTopics[candidate.id]}
+                          style={{
+                            padding: '6px 16px',
+                            backgroundColor: promoting[candidate.id] ? '#6c757d' : '#28a745',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: promoting[candidate.id] || !selectedTopics[candidate.id] ? 'not-allowed' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {promoting[candidate.id] ? 'Adding...' : 'Add'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
