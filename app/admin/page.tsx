@@ -189,7 +189,7 @@ export default function AdminPage() {
     <div style={{ maxWidth: '800px', margin: '50px auto', padding: '20px' }}>
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ marginBottom: '20px' }}>Admin Panel</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <Link
             href="/cron_report"
             style={{
@@ -225,6 +225,18 @@ export default function AdminPage() {
             }}
           >
             Crawl Report
+          </Link>
+          <Link
+            href="/admin/discover-sources"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#28a745',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '4px',
+            }}
+          >
+            Discover Sources
           </Link>
         </div>
       </div>

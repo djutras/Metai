@@ -14,7 +14,8 @@ export const sources = pgTable('sources', {
   consecutiveFailures: integer('consecutive_failures').default(0).notNull(),
   lastFailureAt: timestamp('last_failure_at', { withTimezone: true }),
   lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
-  failureReason: text('failure_reason')
+  failureReason: text('failure_reason'),
+  discoveryPoints: integer('discovery_points').default(0).notNull()
 });
 
 // Topics table
