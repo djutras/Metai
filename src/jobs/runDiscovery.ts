@@ -3,6 +3,7 @@ import { candidateDomains, candidateProbes, sources, articles, topics, sourcesTo
 import { sql, eq } from 'drizzle-orm';
 import { getRobots } from '../lib/robots';
 import { fetchHtml, fetchXml } from '../lib/http';
+import { searchAllEngines, mineNewsAggregators, mineReddit } from '../lib/search-engines';
 
 interface DiscoveryStats {
   candidatesFound: number;
@@ -167,6 +168,31 @@ async function probeDomain(domain: string): Promise<{
 }
 
 /**
+ * Search for domains related to a specific topic
+ */
+async function searchForTopic(topic: { name: string; query: string | null; slug: string }): Promise<string[]> {
+  const domains = new Set<string>();
+
+  // Build search queries
+  const queries: string[] = [
+    `${topic.name} news`,
+    `${topic.name} latest articles`,
+  ];
+
+  if (topic.query) {
+    queries.push(`${topic.query} breaking news`);
+  }
+
+  // Search each query
+  for (const query of queries) {
+    const results = await searchAllEngines(query, 10);
+    results.forEach(d => domains.add(d));
+  }
+
+  return Array.from(domains);
+}
+
+/**
  * Run discovery job
  */
 export async function runDiscovery(): Promise<DiscoveryStats> {
@@ -177,28 +203,70 @@ export async function runDiscovery(): Promise<DiscoveryStats> {
     errors: 0,
   };
 
-  // Gather candidate domains
-  console.log('Mining outbound links...');
+  // Gather candidate domains from multiple sources
+  console.log('='.repeat(80));
+  console.log('DISCOVERY PHASE 1: Gathering candidates');
+  console.log('='.repeat(80));
+
+  // 1. Mine outbound links from recent articles
+  console.log('\n1. Mining outbound links from recent articles...');
   const outboundDomains = await mineOutboundLinks();
-  console.log(`Found ${outboundDomains.length} outbound domains`);
+  console.log(`   Found ${outboundDomains.length} outbound domains`);
 
+  // 2. Load seed domains
   const seedDomains = loadSeedDomains();
-  console.log(`Loaded ${seedDomains.length} seed domains`);
+  console.log(`\n2. Loaded ${seedDomains.length} seed domains`);
 
-  // TODO: Add Reddit/Mastodon harvesting
+  // 3. Search engines for each topic
+  console.log('\n3. Searching for topic-specific domains...');
+  const enabledTopics = await db
+    .select({ name: topics.name, query: topics.query, slug: topics.slug })
+    .from(topics)
+    .where(eq(topics.enabled, true));
 
-  const allCandidates = [...new Set([...outboundDomains, ...seedDomains])];
+  const searchDomains: string[] = [];
+  for (const topic of enabledTopics) {
+    console.log(`   Searching for: ${topic.name}`);
+    const topicDomains = await searchForTopic(topic);
+    searchDomains.push(...topicDomains);
+    console.log(`   Found ${topicDomains.length} domains for ${topic.name}`);
+  }
+
+  // 4. Mine news aggregators
+  console.log('\n4. Mining news aggregators...');
+  const aggregatorDomains = await mineNewsAggregators();
+  console.log(`   Found ${aggregatorDomains.length} aggregator domains`);
+
+  // 5. Mine Reddit
+  console.log('\n5. Mining Reddit...');
+  const redditDomains = await mineReddit('worldnews');
+  console.log(`   Found ${redditDomains.length} Reddit domains`);
+
+  const allCandidates = [...new Set([
+    ...outboundDomains,
+    ...seedDomains,
+    ...searchDomains,
+    ...aggregatorDomains,
+    ...redditDomains,
+  ])];
+
   stats.candidatesFound = allCandidates.length;
+  console.log(`\nTotal unique candidates: ${allCandidates.length}`);
 
   // Filter out existing sources
   const existingSources = await db.select({ domain: sources.domain }).from(sources);
   const existingDomains = new Set(existingSources.map(s => s.domain));
   const newCandidates = allCandidates.filter(d => !existingDomains.has(d));
 
-  console.log(`${newCandidates.length} new candidates to probe`);
+  console.log(`\n${'='.repeat(80)}`);
+  console.log(`DISCOVERY PHASE 2: Probing ${newCandidates.length} new candidates`);
+  console.log('='.repeat(80));
 
-  // Probe each candidate
-  for (const domain of newCandidates.slice(0, 20)) { // Limit to 20 per run
+  // Probe each candidate (limit to 50 per run to avoid timeouts)
+  const probeLimit = 50;
+  console.log(`\nProbing up to ${probeLimit} candidates...\n`);
+
+  for (const domain of newCandidates.slice(0, probeLimit)) {
     try {
       // Check if already in candidates
       const existing = await db

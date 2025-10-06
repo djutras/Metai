@@ -86,7 +86,8 @@ export const candidateDomains = pgTable('candidate_domains', {
   robotsState: text('robots_state'),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
-  notes: text('notes')
+  notes: text('notes'),
+  suggestedTopicId: integer('suggested_topic_id').references(() => topics.id, { onDelete: 'set null' })
 });
 
 // Candidate probes table
