@@ -78,7 +78,7 @@ async function testDomainCrawlability(domain: string): Promise<{
     try {
       const response = await fetch(httpsUrl, {
         method: 'HEAD',
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(2000)
       });
       if (response.ok) {
         result.httpsEnabled = true;
@@ -92,7 +92,7 @@ async function testDomainCrawlability(domain: string): Promise<{
     try {
       const response = await fetch(sitemapUrl, {
         method: 'HEAD',
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(2000)
       });
       if (response.ok) {
         result.hasSitemap = true;
@@ -102,12 +102,13 @@ async function testDomainCrawlability(domain: string): Promise<{
       // No sitemap
     }
 
-    const rssPaths = ['/rss', '/feed', '/rss.xml', '/feed.xml', '/atom.xml'];
+    // Only test first RSS path to save time
+    const rssPaths = ['/feed', '/rss'];
     for (const path of rssPaths) {
       try {
         const response = await fetch(`https://${domain}${path}`, {
           method: 'HEAD',
-          signal: AbortSignal.timeout(5000)
+          signal: AbortSignal.timeout(2000)
         });
         if (response.ok) {
           result.hasRSS = true;
@@ -119,7 +120,7 @@ async function testDomainCrawlability(domain: string): Promise<{
       }
     }
   } catch (error) {
-    console.error(`Error testing ${domain}:`, error);
+    // Silently fail - timeout is expected for many domains
   }
 
   return result;
@@ -147,7 +148,7 @@ const handler: Handler = async (event: HandlerEvent) => {
 
     console.log(`Starting source discovery for topic ${topicId}`);
 
-    // Get recent articles for this topic (last 100)
+    // Get recent articles for this topic (last 10 to stay under timeout)
     const articles = await sql`
       SELECT
         a.id,
@@ -160,10 +161,10 @@ const handler: Handler = async (event: HandlerEvent) => {
       LEFT JOIN sources s ON a.source_id = s.id
       WHERE ta.topic_id = ${topicId}
       ORDER BY ta.added_at DESC
-      LIMIT 100
+      LIMIT 10
     `;
 
-    console.log(`Analyzing ${articles.length} articles for outbound links`);
+    console.log(`Analyzing ${articles.length} articles for outbound links (Netlify timeout: 10s)`);
 
     const discoveries: any[] = [];
     const domainsSeen = new Set<string>();
@@ -171,12 +172,15 @@ const handler: Handler = async (event: HandlerEvent) => {
     // Process each article
     for (const article of articles) {
       try {
-        // Fetch article HTML
+        // Fetch article HTML with short timeout
         const response = await fetch(article.canonical_url, {
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(3000)
         });
 
-        if (!response.ok) continue;
+        if (!response.ok) {
+          console.log(`Skipping ${article.canonical_url}: status ${response.status}`);
+          continue;
+        }
 
         const html = await response.text();
         const sourceDomain = article.source_domain || '';
