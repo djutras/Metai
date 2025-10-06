@@ -238,6 +238,18 @@ export default function AdminPage() {
           >
             Discover Sources
           </Link>
+          <Link
+            href="/admin/candidates"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#17a2b8',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '4px',
+            }}
+          >
+            View Candidates
+          </Link>
         </div>
       </div>
 

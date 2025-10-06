@@ -184,16 +184,19 @@ export async function extractArticle(url: string, html: string): Promise<Extract
     }
 
     // Validate required fields
-    if (!extracted.title || !extracted.published_at) {
+    if (!extracted.title) {
       return null;
     }
+
+    // Use current time if no published_at found
+    const published_at = extracted.published_at || new Date();
 
     return {
       canonical_url,
       title: extracted.title,
       summary: extracted.summary || '',
       image_url: extracted.image_url,
-      published_at: extracted.published_at,
+      published_at,
       source_domain,
       lang,
       paywalled_bool,

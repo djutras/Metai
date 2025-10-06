@@ -41,6 +41,7 @@ export function simhash(text: string): string {
  * Calculate Hamming distance between two hex hash strings
  */
 function hammingDistance(a: string, b: string): number {
+  if (!a || !b || typeof a !== 'string' || typeof b !== 'string') return Infinity;
   if (a.length !== b.length) return Infinity;
 
   let distance = 0;
@@ -78,7 +79,7 @@ export async function isDuplicate(
   }
 
   // Compute SimHash
-  const hashText = `${article.title} ${article.summary}`;
+  const hashText = `${article.title || ''} ${article.summary || ''}`;
   const hash = simhash(hashText);
 
   // Check SimHash against recent articles (last 7 days)
@@ -118,7 +119,7 @@ export async function upsertArticleAndLink(
   article: ExtractedArticle
 ): Promise<{ inserted: boolean; articleId: bigint }> {
   // Compute SimHash
-  const hashText = `${article.title} ${article.summary}`;
+  const hashText = `${article.title || ''} ${article.summary || ''}`;
   const hash = simhash(hashText);
 
   // Get or create source

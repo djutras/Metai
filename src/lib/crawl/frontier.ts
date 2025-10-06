@@ -8,6 +8,7 @@ interface Site {
   domain: string;
   indexPaths?: string[];
   maxUrlsPerDomain?: number;
+  articlePattern?: string;
 }
 
 interface Topic {
@@ -99,8 +100,21 @@ export async function buildFrontier(
         }
       }
 
+      // Skip pattern filtering - let quality gates handle it
+      let filteredUrls = urls;
+      // if (site.articlePattern) {
+      //   try {
+      //     const pattern = new RegExp(site.articlePattern);
+      //     filteredUrls = urls.filter(url => pattern.test(url));
+      //     console.log(`  Filtered ${urls.length} → ${filteredUrls.length} URLs using pattern for ${site.domain}`);
+      //   } catch (error) {
+      //     console.warn(`  Invalid article pattern for ${site.domain}:`, error);
+      //     filteredUrls = urls;
+      //   }
+      // }
+
       // Add to candidates with Bloom filter deduplication
-      for (const url of urls) {
+      for (const url of filteredUrls) {
         if (!bloomFilter.mightContain(url)) {
           bloomFilter.add(url);
           candidateUrls.push(url);

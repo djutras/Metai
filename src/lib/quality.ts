@@ -21,23 +21,25 @@ function countTokens(text: string): number {
 export function isArticle(article: ExtractedArticle, topic: Topic): boolean {
   // Must have title
   if (!article.title || article.title.length < 10) {
+    console.log(`[Quality] Rejected - title too short: "${article.title}"`);
     return false;
   }
 
-  // Check freshness
+  // Check freshness (more lenient - only check if we have a real published date)
   if (article.published_at) {
     const hoursAgo = (Date.now() - article.published_at.getTime()) / (1000 * 60 * 60);
-    if (hoursAgo > topic.freshnessHours) {
+    // Only reject if the date is clearly in the past and exceeds freshness window
+    // Allow future dates (clock skew) and very recent articles
+    if (hoursAgo > topic.freshnessHours && hoursAgo > 0) {
+      console.log(`[Quality] Rejected - too old: ${hoursAgo.toFixed(1)}h ago (limit: ${topic.freshnessHours}h)`);
       return false;
     }
-  } else {
-    // No published date
-    return false;
   }
 
-  // Check body/summary length (150-3000 tokens)
+  // Check body/summary length (very lenient: 20-10000 tokens)
   const summaryTokens = countTokens(article.summary);
-  if (summaryTokens < 150 || summaryTokens > 3000) {
+  if (summaryTokens < 20 || summaryTokens > 10000) {
+    console.log(`[Quality] Rejected - summary tokens: ${summaryTokens} (need 20-10000)`);
     return false;
   }
 
@@ -56,6 +58,7 @@ export function isArticle(article: ExtractedArticle, topic: Topic): boolean {
 
   for (const pattern of blacklistPatterns) {
     if (pattern.test(textToCheck)) {
+      console.log(`[Quality] Rejected - blacklist: ${pattern}`);
       return false;
     }
   }
@@ -69,8 +72,8 @@ export function isArticle(article: ExtractedArticle, topic: Topic): boolean {
 export function topicMatchScore(article: ExtractedArticle, topic: Topic): number {
   let score = 0;
 
-  const titleText = article.title.toLowerCase();
-  const summaryText = (article.summary || '').toLowerCase();
+  const titleText = (article.title || '').toLowerCase();
+  const summaryText = typeof article.summary === 'string' ? article.summary.toLowerCase() : '';
   const combinedText = `${titleText} ${summaryText}`;
 
   // Query keywords (from topic.query)
