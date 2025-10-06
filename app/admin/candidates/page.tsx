@@ -28,6 +28,8 @@ export default function CandidatesPage() {
   const [message, setMessage] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<{ [key: number]: string }>({});
   const [promoting, setPromoting] = useState<{ [key: number]: boolean }>({});
+  const [bulkTopic, setBulkTopic] = useState('');
+  const [bulkPromoting, setBulkPromoting] = useState(false);
 
   useEffect(() => {
     loadCandidates();
@@ -100,6 +102,46 @@ export default function CandidatesPage() {
     } finally {
       setPromoting({ ...promoting, [candidateId]: false });
     }
+  };
+
+  const handleBulkPromote = async () => {
+    if (!bulkTopic) {
+      setMessage('Please select a topic for bulk promotion');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    setBulkPromoting(true);
+    setMessage('');
+
+    let promoted = 0;
+    let failed = 0;
+
+    for (const candidate of candidates) {
+      try {
+        const response = await fetch('/.netlify/functions/promote-candidate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidateId: candidate.id, topicId: parseInt(bulkTopic) })
+        });
+
+        if (response.ok) {
+          promoted++;
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        failed++;
+      }
+    }
+
+    setBulkPromoting(false);
+    setMessage(`Successfully promoted ${promoted} candidates! ${failed > 0 ? `(${failed} failed)` : ''}`);
+
+    // Reload candidates list
+    await loadCandidates();
+
+    setTimeout(() => setMessage(''), 5000);
   };
 
   const formatDate = (dateString: string) => {
@@ -179,6 +221,56 @@ export default function CandidatesPage() {
 
       {!loading && !error && candidates.length > 0 && (
         <>
+          <div style={{
+            marginBottom: '30px',
+            padding: '20px',
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ marginBottom: '15px', fontWeight: 'bold', fontSize: '16px' }}>
+              Bulk Add All Candidates
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <select
+                value={bulkTopic}
+                onChange={(e) => setBulkTopic(e.target.value)}
+                disabled={bulkPromoting}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  fontSize: '16px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                }}
+              >
+                <option value="">Select topic to add all {candidates.length} candidates...</option>
+                {topics.map((topic) => (
+                  <option key={topic.id} value={topic.id}>
+                    {topic.name} ({topic.slug})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkPromote}
+                disabled={bulkPromoting || !bulkTopic}
+                style={{
+                  padding: '10px 30px',
+                  backgroundColor: bulkPromoting ? '#6c757d' : '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: bulkPromoting || !bulkTopic ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {bulkPromoting ? 'Adding All...' : 'Add All'}
+              </button>
+            </div>
+          </div>
+
           <div style={{ marginBottom: '20px', color: '#666' }}>
             <strong>{candidates.length}</strong> candidate domain{candidates.length !== 1 ? 's' : ''} found
           </div>
